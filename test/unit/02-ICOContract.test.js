@@ -120,7 +120,7 @@ const { developmentChains } = require("../../helper-hardhat-config");
                 1
               )
             ).to.be.revertedWith(
-              "All tokens in the Seed Stage sold, wait for the next sale"
+              "Not enough tokens left for purchase in this stage'"
             );
           });
           it("revert if allowance too small", async function () {

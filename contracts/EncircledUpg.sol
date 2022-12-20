@@ -6,34 +6,22 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 
 contract EncircledUpgradable is
     Initializable,
     ContextUpgradeable,
     IERC20Upgradeable,
     UUPSUpgradeable,
-    OwnableUpgradeable
+    OwnableUpgradeable,
+    IERC20MetadataUpgradeable
 {
-    event SetTransactionLimit(uint256 maxAmount);
-
-    mapping(address => uint256) private _rOwned;
-    mapping(address => uint256) private _tOwned;
-    mapping(address => mapping(address => uint256)) private _allowances;
-
-    mapping(address => bool) private _isExcludedFromFee;
-
-    mapping(address => bool) private _isExcluded;
-    address[] private _excluded;
-
-    uint256 private MAX;
-    uint256 private _tTotal;
-
-    uint256 private _rTotal;
-    uint256 private _tFeeTotal;
-
     string private _name;
     string private _symbol;
     uint8 private _decimals;
+
+    uint256 private _tTotal;
+    uint256 private _rTotal;
 
     uint256 public _taxFee;
     uint256 private _previousTaxFee;
@@ -42,48 +30,54 @@ contract EncircledUpgradable is
     uint256 private _previousTransactionFee;
     address public _transactionWallet;
 
-    function initialize() public initializer {
+    uint256 private _tFeeTotal;
+    address[] private _excluded;
+
+    mapping(address => uint256) private _rOwned;
+    mapping(address => uint256) private _tOwned;
+    mapping(address => mapping(address => uint256)) private _allowances;
+    mapping(address => bool) private _isExcludedFromFee;
+    mapping(address => bool) private _isExcluded;
+
+    struct FeeData {
+        uint256 tFee;
+        uint256 tTransaction;
+    }
+
+    function initialize() external initializer {
+        __ERC20_init("Encircled", "ENCD");
         __Ownable_init();
         __UUPSUpgradeable_init();
-        _name = "Encircled";
-        _symbol = "ENCD";
         _decimals = 18;
         _taxFee = 8;
         _previousTaxFee = _taxFee;
         _transactionFee = 5;
         _previousTransactionFee = _transactionFee;
-        _transactionWallet = address(0); //change before real development!
-        MAX = ~uint256(0);
+        _transactionWallet = 0xe325854cfCC89546d9c9bfCFa32967864287bD0C;
         _tTotal = 200_000_000 * 10 ** 18;
-        _rTotal = (MAX - (MAX % _tTotal));
+        _rTotal = (type(uint256).max - (type(uint256).max % _tTotal));
         _rOwned[_msgSender()] = _rTotal;
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
         emit Transfer(address(0), _msgSender(), _tTotal);
     }
 
+    function __ERC20_init(
+        string memory name_,
+        string memory symbol_
+    ) internal onlyInitializing {
+        __ERC20_init_unchained(name_, symbol_);
+    }
+
+    function __ERC20_init_unchained(
+        string memory name_,
+        string memory symbol_
+    ) internal onlyInitializing {
+        _name = name_;
+        _symbol = symbol_;
+    }
+
     function _authorizeUpgrade(address) internal override onlyOwner {}
-
-    function name() public view returns (string memory) {
-        return _name;
-    }
-
-    function symbol() public view returns (string memory) {
-        return _symbol;
-    }
-
-    function decimals() public view returns (uint8) {
-        return _decimals;
-    }
-
-    function totalSupply() public view override returns (uint256) {
-        return _tTotal;
-    }
-
-    function balanceOf(address account) public view override returns (uint256) {
-        if (_isExcluded[account]) return _tOwned[account];
-        return tokenFromReflection(_rOwned[account]);
-    }
 
     function transfer(
         address to,
@@ -91,22 +85,6 @@ contract EncircledUpgradable is
     ) public virtual override returns (bool) {
         address owner = _msgSender();
         _transfer(owner, to, amount);
-        return true;
-    }
-
-    function allowance(
-        address owner,
-        address spender
-    ) public view virtual override returns (uint256) {
-        return _allowances[owner][spender];
-    }
-
-    function approve(
-        address spender,
-        uint256 amount
-    ) public virtual override returns (bool) {
-        address owner = _msgSender();
-        _approve(owner, spender, amount);
         return true;
     }
 
@@ -121,21 +99,13 @@ contract EncircledUpgradable is
         return true;
     }
 
-    function _spendAllowance(
-        address owner,
+    function approve(
         address spender,
         uint256 amount
-    ) internal virtual {
-        uint256 currentAllowance = allowance(owner, spender);
-        if (currentAllowance != type(uint256).max) {
-            require(
-                currentAllowance >= amount,
-                "ERC20: insufficient allowance"
-            );
-            unchecked {
-                _approve(owner, spender, currentAllowance - amount);
-            }
-        }
+    ) public virtual override returns (bool) {
+        address owner = _msgSender();
+        _approve(owner, spender, amount);
+        return true;
     }
 
     function increaseAllowance(
@@ -164,12 +134,34 @@ contract EncircledUpgradable is
         return true;
     }
 
-    function isExcludedFromReward(address account) public view returns (bool) {
-        return _isExcluded[account];
+    function includeInReward(address account) public onlyOwner {
+        require(_isExcluded[account], "Account is already excluded");
+        for (uint256 i = 0; i < _excluded.length; i++) {
+            if (_excluded[i] == account) {
+                _excluded[i] = _excluded[_excluded.length - 1];
+                _tOwned[account] = 0;
+                _isExcluded[account] = false;
+                _excluded.pop();
+                break;
+            }
+        }
     }
 
-    function totalFees() public view returns (uint256) {
-        return _tFeeTotal;
+    function excludeFromReward(address account) public onlyOwner {
+        require(!_isExcluded[account], "Account is already excluded");
+        if (_rOwned[account] > 0) {
+            _tOwned[account] = tokenFromReflection(_rOwned[account]);
+        }
+        _isExcluded[account] = true;
+        _excluded.push(account);
+    }
+
+    function includeInFee(address account) public onlyOwner {
+        _isExcludedFromFee[account] = false;
+    }
+
+    function excludeFromFee(address account) public onlyOwner {
+        _isExcludedFromFee[account] = true;
     }
 
     function deliver(uint256 tAmount) public {
@@ -182,6 +174,46 @@ contract EncircledUpgradable is
         _rOwned[sender] = _rOwned[sender] - rAmount;
         _rTotal = _rTotal - rAmount;
         _tFeeTotal = _tFeeTotal + tAmount;
+    }
+
+    function name() public view returns (string memory) {
+        return _name;
+    }
+
+    function symbol() public view returns (string memory) {
+        return _symbol;
+    }
+
+    function decimals() public view returns (uint8) {
+        return _decimals;
+    }
+
+    function totalSupply() public view override returns (uint256) {
+        return _tTotal;
+    }
+
+    function totalFees() public view returns (uint256) {
+        return _tFeeTotal;
+    }
+
+    function balanceOf(address account) public view override returns (uint256) {
+        if (_isExcluded[account]) return _tOwned[account];
+        return tokenFromReflection(_rOwned[account]);
+    }
+
+    function allowance(
+        address owner,
+        address spender
+    ) public view virtual override returns (uint256) {
+        return _allowances[owner][spender];
+    }
+
+    function isExcludedFromFee(address account) public view returns (bool) {
+        return _isExcludedFromFee[account];
+    }
+
+    function isExcludedFromReward(address account) public view returns (bool) {
+        return _isExcluded[account];
     }
 
     function reflectionFromToken(
@@ -209,42 +241,21 @@ contract EncircledUpgradable is
         return rAmount / currentRate;
     }
 
-    function excludeFromReward(address account) public onlyOwner {
-        require(!_isExcluded[account], "Account is already excluded");
-        if (_rOwned[account] > 0) {
-            _tOwned[account] = tokenFromReflection(_rOwned[account]);
-        }
-        _isExcluded[account] = true;
-        _excluded.push(account);
-    }
-
-    function includeInReward(address account) external onlyOwner {
-        require(_isExcluded[account], "Account is already excluded");
-        for (uint256 i = 0; i < _excluded.length; i++) {
-            if (_excluded[i] == account) {
-                _excluded[i] = _excluded[_excluded.length - 1];
-                _tOwned[account] = 0;
-                _isExcluded[account] = false;
-                _excluded.pop();
-                break;
+    function _spendAllowance(
+        address owner,
+        address spender,
+        uint256 amount
+    ) internal virtual {
+        uint256 currentAllowance = allowance(owner, spender);
+        if (currentAllowance != type(uint256).max) {
+            require(
+                currentAllowance >= amount,
+                "ERC20: insufficient allowance"
+            );
+            unchecked {
+                _approve(owner, spender, currentAllowance - amount);
             }
         }
-    }
-
-    function excludeFromFee(address account) public onlyOwner {
-        _isExcludedFromFee[account] = true;
-    }
-
-    function includeInFee(address account) public onlyOwner {
-        _isExcludedFromFee[account] = false;
-    }
-
-    //to recieve ETH from uniswapV2Router when swaping
-    receive() external payable {}
-
-    struct FeeData {
-        uint256 tFee;
-        uint256 tTransaction;
     }
 
     function _reflectFee(uint256 rFee, uint256 tFee) private {
@@ -354,10 +365,6 @@ contract EncircledUpgradable is
     function restoreAllFee() private {
         _taxFee = _previousTaxFee;
         _transactionFee = _previousTransactionFee;
-    }
-
-    function isExcludedFromFee(address account) public view returns (bool) {
-        return _isExcludedFromFee[account];
     }
 
     function _approve(address owner, address spender, uint256 amount) private {
@@ -489,4 +496,6 @@ contract EncircledUpgradable is
         _reflectFee(rFee, tFee);
         emit Transfer(sender, recipient, tTransferAmount);
     }
+
+    uint256[45] private __gap;
 }

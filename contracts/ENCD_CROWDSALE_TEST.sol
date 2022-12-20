@@ -17,10 +17,10 @@ interface IENCDVesting {
     ) external;
 }
 
-contract ENCD_ICOR is Ownable, ReentrancyGuard {
-    ERC20 public USDTtoken; // = ERC20(0x55d398326f99059ff775485246999027b3197955);
-    ERC20 public DAItoken; // = ERC20(0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3);
-    ERC20 public BUSDtoken; // = ERC20(0xe9e7cea3dedca5984780bafc599bd69add087d56);
+contract ENCD_ICO is Ownable, ReentrancyGuard {
+    ERC20 public USDTtoken;
+    ERC20 public DAItoken;
+    ERC20 public BUSDtoken;
     ERC20 public Encircledtoken;
     IENCDVesting public ENCDtoken;
 
@@ -46,16 +46,12 @@ contract ENCD_ICOR is Ownable, ReentrancyGuard {
     constructor(
         address _tokenaddress,
         address _USDTtokenaddress,
-        address _DAItokenaddress,
-        address _BUSDtokenaddress,
         address _vestingscaddress
     ) {
         currentStage = Stages.none;
         Encircledtoken = ERC20(_tokenaddress);
         ENCDtoken = IENCDVesting(_vestingscaddress);
         USDTtoken = ERC20(_USDTtokenaddress);
-        DAItoken = ERC20(_DAItokenaddress);
-        BUSDtoken = ERC20(_BUSDtokenaddress);
     }
 
     function startVesting(uint _starttime) external onlyOwner {
@@ -68,7 +64,7 @@ contract ENCD_ICOR is Ownable, ReentrancyGuard {
     /**
      * Steps:
      * 1. stablecoin approval
-     * @dev function to buy token with USDT/DAI/BUSD
+     * @dev function to buy token with USDT
      * id 1 = USDT
      * id 2 = DAI
      * id 3 = BUSD

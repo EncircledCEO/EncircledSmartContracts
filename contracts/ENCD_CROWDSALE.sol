@@ -18,9 +18,9 @@ interface IENCDVesting {
 }
 
 contract ENCD_ICO is Ownable, ReentrancyGuard {
-    ERC20 public USDTtoken; // = ERC20(0x55d398326f99059ff775485246999027b3197955);
-    ERC20 public DAItoken; // = ERC20(0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3);
-    ERC20 public BUSDtoken; // = ERC20(0xe9e7cea3dedca5984780bafc599bd69add087d56);
+    ERC20 public USDTtoken;
+    ERC20 public DAItoken;
+    ERC20 public BUSDtoken;
     ERC20 public Encircledtoken;
     IENCDVesting public ENCDtoken;
 
@@ -45,13 +45,17 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
 
     constructor(
         address _tokenaddress,
+        address _vestingscaddress,
         address _USDTtokenaddress,
-        address _vestingscaddress
+        address _DAItokenaddress,
+        address _BUSDtokenaddress
     ) {
         currentStage = Stages.none;
         Encircledtoken = ERC20(_tokenaddress);
         ENCDtoken = IENCDVesting(_vestingscaddress);
         USDTtoken = ERC20(_USDTtokenaddress);
+        DAItoken = ERC20(_DAItokenaddress);
+        BUSDtoken = ERC20(_BUSDtokenaddress);
     }
 
     function startVesting(uint _starttime) external onlyOwner {
@@ -197,6 +201,7 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
     }
 
     function startTeamVesting() internal {
+        //Initalize Team Vesting
         ENCDtoken.createVestingSchedule(
             0x02346e9d0173CE68237330CF8305025F2A54520C,
             startVTime,
