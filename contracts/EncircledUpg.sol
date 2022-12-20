@@ -44,7 +44,7 @@ contract EncircledUpgradable is
         uint256 tTransaction;
     }
 
-    function initialize() external initializer {
+    function initialize() external initializer onlyProxy {
         __ERC20_init("Encircled", "ENCD");
         __Ownable_init();
         __UUPSUpgradeable_init();

@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface IENCDVesting {
@@ -17,7 +18,8 @@ interface IENCDVesting {
     ) external;
 }
 
-contract ENCD_ICO is Ownable, ReentrancyGuard {
+contract ENCD_ICOT is Ownable, ReentrancyGuard {
+    using SafeERC20 for ERC20;
     ERC20 public USDTtoken;
     ERC20 public DAItoken;
     ERC20 public BUSDtoken;
@@ -81,12 +83,12 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
             address(this)
         );
         uint256 price = getPrice();
-        uint256 totalPrice = (_amount / price) * 10;
+        uint256 totalPrice = (_amount * 10) / price;
         require(
             approvedAmount >= totalPrice,
             "Check the token allowance, not enough approved!"
         );
-        stableToken.transferFrom(msg.sender, address(this), totalPrice);
+        stableToken.safeTransferFrom(msg.sender, address(this), totalPrice);
         //ICOtoken is in the contract
         transferVesting(msg.sender, _amount);
         //Encircledtoken.transfer(msg.sender, _amount);
@@ -138,7 +140,7 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
             stableToken.balanceOf(address(this)) >= amount,
             "Not enough funds on the contract"
         );
-        stableToken.transfer(msg.sender, amount);
+        stableToken.safeTransfer(msg.sender, amount);
         return true;
     }
 
@@ -159,7 +161,7 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
                 0,
                 60 * 60 * 24 * 30 * 12,
                 60 * 60 * 24,
-                (_amount / 10000) * 625, //6.25%
+                (_amount * 625) / 10000, //6.25%
                 _amount
             );
         } else if (currentStage == Stages.privatstage) {
@@ -178,7 +180,7 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
                 60 * 60 * 24 * 30 * 1,
                 60 * 60 * 24 * 30 * 12,
                 60 * 60 * 24,
-                (_amount / 10000) * 1250, //12.5%
+                (_amount * 1250) / 10000, //12.5%
                 _amount
             );
         } else if (currentStage == Stages.publicstage) {
@@ -194,14 +196,13 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
                 60 * 60 * 24 * 30 * 2,
                 60 * 60 * 24 * 30 * 6,
                 60 * 60 * 24,
-                (_amount / 10000) * 2500, //25%
+                (_amount * 2500) / 10000, //25%
                 _amount
             );
         }
     }
 
     function startTeamVesting() internal {
-        //Initalize Team Vesting
         ENCDtoken.createVestingSchedule(
             0x02346e9d0173CE68237330CF8305025F2A54520C,
             startVTime,
