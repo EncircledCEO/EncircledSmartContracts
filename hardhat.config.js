@@ -36,7 +36,7 @@ module.exports = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-      // // If you want to do some forking, uncomment this
+      // // If fork
       // forking: {
       //   url: MAINNET_RPC_URL
       // }
@@ -48,9 +48,7 @@ module.exports = {
     goerli: {
       url: GOERLI_RPC_URL,
       accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
-      //   accounts: {
-      //     mnemonic: MNEMONIC,
-      //   },
+
       saveDeployments: true,
       chainId: 5,
       blockConfirmations: 6,
@@ -58,9 +56,7 @@ module.exports = {
     mainnet: {
       url: MAINNET_RPC_URL,
       accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
-      //   accounts: {
-      //     mnemonic: MNEMONIC,
-      //   },
+
       saveDeployments: true,
       chainId: 1,
       blockConfirmations: 6,
@@ -90,8 +86,8 @@ module.exports = {
 
   namedAccounts: {
     deployer: {
-      default: 0, // here this will by default take the first account as deployer0.5.16
-      1: 0, // similarly on mainnet it will take the first account as deployer. Note though that depending on how hardhat network are configured, the account 0 on one network can be different than on another
+      default: 0,
+      1: 0,
     },
     player: {
       default: 1,
