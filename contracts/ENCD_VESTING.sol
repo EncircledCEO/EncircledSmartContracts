@@ -315,21 +315,14 @@ contract EncdVesting is Ownable, ReentrancyGuard {
             uint secondsPerSlice = vestingSchedule.slicePeriodSeconds;
             uint256 vestedSlicePeriods = timeFromStart.div(secondsPerSlice);
             uint256 vestedSeconds = vestedSlicePeriods.mul(secondsPerSlice);
-            uint256 vestedAmount = vestingSchedule
-                .amountTotal
-                .mul(vestedSeconds)
-                .div(vestingSchedule.duration);
-            if (
-                (vestedAmount + vestingSchedule.amountTge) <
-                vestingSchedule.amountTotal
-            ) {
-                return
-                    vestedAmount.sub(vestingSchedule.released).add(
-                        vestingSchedule.amountTge
-                    );
-            } else {
-                return vestedAmount.sub(vestingSchedule.released);
-            }
+            uint256 vestedAmount = (vestingSchedule.amountTotal -
+                vestingSchedule.amountTge).mul(vestedSeconds).div(
+                    vestingSchedule.duration
+                );
+            return
+                vestedAmount.add(vestingSchedule.amountTge).sub(
+                    vestingSchedule.released
+                );
         }
     }
 

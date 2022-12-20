@@ -52,7 +52,7 @@ contract EncircledUpgradable is
         _previousTaxFee = _taxFee;
         _transactionFee = 5;
         _previousTransactionFee = _transactionFee;
-        _transactionWallet = address(0); //change before real development
+        _transactionWallet = address(0); //change before real development!
         MAX = ~uint256(0);
         _tTotal = 200_000_000 * 10 ** 18;
         _rTotal = (MAX - (MAX % _tTotal));

@@ -312,13 +312,13 @@ const helpers = require("@nomicfoundation/hardhat-network-helpers");
             )
           ).to.be.equal(ethers.utils.parseUnits("2750000", 18));
 
-          await helpers.time.increase(60 * 60 * 24 * 30 * 200);
+          await helpers.time.increase(60 * 60 * 24);
 
           expect(
             await tokenContractVesting.computeReleasableAmount(
               vestingScheduleBob
             )
-          ).to.be.equal(ethers.utils.parseUnits("7900000", 18));
+          ).to.be.equal("420833333333333333333333");
         });
       });
     });

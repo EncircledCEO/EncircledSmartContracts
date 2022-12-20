@@ -17,9 +17,6 @@ interface IENCDVesting {
     ) external;
 }
 
-/**
- *@title Initial Coin Offerring(ICO) contract https://github.com/halls7588/Code-for-the-6-Steps-to-ERC20-Tokens-and-ICO-Smart-Contracts-Tutorial/blob/master/ICOtoken.sol
- */
 contract ENCD_ICO is Ownable, ReentrancyGuard {
     ERC20 public USDTtoken; // = ERC20(0x55d398326f99059ff775485246999027b3197955);
     ERC20 public DAItoken; // = ERC20(0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3);
