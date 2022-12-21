@@ -193,7 +193,7 @@ contract Encircled is Context, IERC20, Ownable {
         _tFeeTotal = _tFeeTotal + tAmount;
     }
 
-    //Returning informations to caller:
+    //returning informations to caller:
     function name() public pure returns (string memory) {
         return _name;
     }
