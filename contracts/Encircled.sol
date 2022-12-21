@@ -10,9 +10,9 @@ contract Encircled is Context, IERC20, Ownable {
     string private constant _symbol = "ENCD";
     uint8 private constant _decimals = 18;
 
-    uint256 private _tTotal = 200_000_000 * 10 ** 18;
+    uint256 private _tTotal = 200_000_000 * 10 ** 18; //total supply
     uint256 private _rTotal = (type(uint256).max -
-        (type(uint256).max % _tTotal));
+        (type(uint256).max % _tTotal)); //used for computation of real supply supply (redistribution)
 
     uint256 public _taxFee = 8; //8%
     uint256 private _previousTaxFee = _taxFee;
@@ -20,7 +20,7 @@ contract Encircled is Context, IERC20, Ownable {
     uint256 public _transactionFee = 5; //5%
     uint256 private _previousTransactionFee = _transactionFee;
     address public constant _transactionWallet =
-        0xe325854cfCC89546d9c9bfCFa32967864287bD0C; //Ecosystem Development wallet
+        0xe325854cfCC89546d9c9bfCFa32967864287bD0C; //transaction wallet
 
     uint256 private _tFeeTotal;
     address[] private _excluded;
@@ -36,16 +36,23 @@ contract Encircled is Context, IERC20, Ownable {
         uint256 tTransaction;
     }
 
+    /**
+     * @dev initalizing the contract
+     * @notice excluding owner(deployer) and address from the fees and assigning the total supply to the deployer
+     */
     constructor() {
         _rOwned[_msgSender()] = _rTotal;
-
         //exclude owner and this contract from the fee
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
-
         emit Transfer(address(0), _msgSender(), _tTotal);
     }
 
+    /**
+     * @dev transfer of tokens from own wallet (ERC20 token standard)
+     * @param to receiving address
+     * @param amount amount of tokens to send
+     */
     function transfer(
         address to,
         uint256 amount
@@ -55,6 +62,12 @@ contract Encircled is Context, IERC20, Ownable {
         return true;
     }
 
+    /**
+     * @dev transfer of approved tokens (ERC20 token standard)
+     * @param from sending address
+     * @param to receiving address
+     * @param amount amount of tokens to send
+     */
     function transferFrom(
         address from,
         address to,
@@ -66,6 +79,11 @@ contract Encircled is Context, IERC20, Ownable {
         return true;
     }
 
+    /**
+     * @dev approve another address to spend tokens (ERC20 token standard)
+     * @param spender address that is granted the ability to spend tokens
+     * @param amount amount of tokens spender is allowed to spend
+     */
     function approve(
         address spender,
         uint256 amount
@@ -75,6 +93,11 @@ contract Encircled is Context, IERC20, Ownable {
         return true;
     }
 
+    /**
+     * @dev increases token amount address is allowed to spend (ERC20 token standard)
+     * @param spender address that is granted the ability to spend tokens
+     * @param addedValue allowed amount added of tokens spender is allowed to use
+     */
     function increaseAllowance(
         address spender,
         uint256 addedValue
@@ -84,6 +107,11 @@ contract Encircled is Context, IERC20, Ownable {
         return true;
     }
 
+    /**
+     * @dev decreases token amount address is allowed to spend (ERC20 token standard)
+     * @param spender address that is granted the ability to spend tokens
+     * @param subtractedValue allowed amount subtracted of tokens spender is allowed to use
+     */
     function decreaseAllowance(
         address spender,
         uint256 subtractedValue
@@ -101,6 +129,11 @@ contract Encircled is Context, IERC20, Ownable {
         return true;
     }
 
+    /**
+     * @dev including address in reward (receives a portion of distributed tokens)
+     * @notice all addresses are automatically included only to include an adress after excluding it
+     * @param account address that included
+     */
     function includeInReward(address account) public onlyOwner {
         require(_isExcluded[account], "Account is already excluded");
         for (uint256 i = 0; i < _excluded.length; i++) {
@@ -114,6 +147,10 @@ contract Encircled is Context, IERC20, Ownable {
         }
     }
 
+    /**
+     * @dev excluding address from reward (will not receive of distributed tokens)
+     * @param account address that is excluded
+     */
     function excludeFromReward(address account) public onlyOwner {
         require(!_isExcluded[account], "Account is already excluded");
         if (_rOwned[account] > 0) {
@@ -123,14 +160,27 @@ contract Encircled is Context, IERC20, Ownable {
         _excluded.push(account);
     }
 
+    /**
+     * @dev including address in fee (has to pay the fee when sending tokens (redistribution, development))
+     * @notice all addresses are automatically included only to include an adress after excluding it
+     * @param account address that is included
+     */
     function includeInFee(address account) public onlyOwner {
         _isExcludedFromFee[account] = false;
     }
 
+    /**
+     * @dev excluded address from fee (won't pay a fee when sending tokens (redistribution, development))
+     * @param account address that is excluded
+     */
     function excludeFromFee(address account) public onlyOwner {
         _isExcludedFromFee[account] = true;
     }
 
+    /**
+     * @dev distributes spezifed amount received reflected tokens to all other address (detucts it from caller address)
+     * @param tAmount amount to distribute
+     */
     function deliver(uint256 tAmount) public {
         address sender = _msgSender();
         require(
@@ -143,6 +193,7 @@ contract Encircled is Context, IERC20, Ownable {
         _tFeeTotal = _tFeeTotal + tAmount;
     }
 
+    //Returning informations to caller:
     function name() public pure returns (string memory) {
         return _name;
     }
@@ -208,6 +259,10 @@ contract Encircled is Context, IERC20, Ownable {
         return rAmount / currentRate;
     }
 
+    /**
+     * @notice Supporting functions:
+     */
+    //checks whetever address is allowed to spend balance
     function _spendAllowance(
         address owner,
         address spender,
@@ -225,11 +280,13 @@ contract Encircled is Context, IERC20, Ownable {
         }
     }
 
+    //updates reflected fee
     function _reflectFee(uint256 rFee, uint256 tFee) private {
         _rTotal = _rTotal - rFee;
         _tFeeTotal = _tFeeTotal + tFee;
     }
 
+    //get spezific values (see return)
     function _getValues(
         uint256 tAmount
     )
@@ -255,6 +312,7 @@ contract Encircled is Context, IERC20, Ownable {
         );
     }
 
+    //calculation of tax fees and return fee and transfer amount
     function _getTValues(
         uint256 tAmount
     ) private view returns (uint256, FeeData memory) {
@@ -265,6 +323,7 @@ contract Encircled is Context, IERC20, Ownable {
         return (tTransferAmount, tFeeData);
     }
 
+    //calculation of tax fees of reflected tokens and returns fee and transfer amount
     function _getRValues(
         uint256 tAmount,
         FeeData memory tFeeData,
@@ -277,11 +336,13 @@ contract Encircled is Context, IERC20, Ownable {
         return (rAmount, rTransferAmount, rFee);
     }
 
+    //get rate to calculate amount of reflected tokens
     function _getRate() private view returns (uint256) {
         (uint256 rSupply, uint256 tSupply) = _getCurrentSupply();
         return rSupply / tSupply;
     }
 
+    //get reflected and normal supply
     function _getCurrentSupply() private view returns (uint256, uint256) {
         uint256 rSupply = _rTotal;
         uint256 tSupply = _tTotal;
@@ -297,6 +358,7 @@ contract Encircled is Context, IERC20, Ownable {
         return (rSupply, tSupply);
     }
 
+    //supportint function for transfering tokens
     function _takeTransaction(uint256 tTransaction) private {
         uint256 currentRate = _getRate();
         uint256 rTransaction = tTransaction * currentRate;
@@ -309,16 +371,19 @@ contract Encircled is Context, IERC20, Ownable {
                 tTransaction;
     }
 
+    //calcutes tax fee
     function calculateTaxFee(uint256 _amount) private view returns (uint256) {
         return (_amount * _taxFee) / (10 ** 2);
     }
 
+    //calcutes transaction fee
     function calculateTransactionFee(
         uint256 _amount
     ) private view returns (uint256) {
         return (_amount * _transactionFee) / (10 ** 2);
     }
 
+    //remove all fees
     function removeAllFee() private {
         if (_taxFee == 0 && _transactionFee == 0) return;
 
@@ -329,11 +394,13 @@ contract Encircled is Context, IERC20, Ownable {
         _transactionFee = 0;
     }
 
+    //restore all fees
     function restoreAllFee() private {
         _taxFee = _previousTaxFee;
         _transactionFee = _previousTransactionFee;
     }
 
+    //execute approve function
     function _approve(address owner, address spender, uint256 amount) private {
         require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
@@ -342,6 +409,7 @@ contract Encircled is Context, IERC20, Ownable {
         emit Approval(owner, spender, amount);
     }
 
+    //execute transfer function part 1
     function _transfer(address from, address to, uint256 amount) private {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
@@ -356,7 +424,7 @@ contract Encircled is Context, IERC20, Ownable {
         _tokenTransfer(from, to, amount, takeFee);
     }
 
-    //this method is responsible for taking all fee, if takeFee is true
+    //execute transfer function part 2
     function _tokenTransfer(
         address sender,
         address recipient,
@@ -380,6 +448,7 @@ contract Encircled is Context, IERC20, Ownable {
         if (!takeFee) restoreAllFee();
     }
 
+    //execute transfer function part 3
     function _transferStandard(
         address sender,
         address recipient,
@@ -400,6 +469,7 @@ contract Encircled is Context, IERC20, Ownable {
         emit Transfer(sender, recipient, tTransferAmount);
     }
 
+    //execute transfer if receiving address is excluded
     function _transferToExcluded(
         address sender,
         address recipient,
@@ -421,6 +491,7 @@ contract Encircled is Context, IERC20, Ownable {
         emit Transfer(sender, recipient, tTransferAmount);
     }
 
+    //execute transfer if sending address is excluded
     function _transferFromExcluded(
         address sender,
         address recipient,
@@ -442,6 +513,7 @@ contract Encircled is Context, IERC20, Ownable {
         emit Transfer(sender, recipient, tTransferAmount);
     }
 
+    //execute transfer if both addresses are excluded
     function _transferBothExcluded(
         address sender,
         address recipient,

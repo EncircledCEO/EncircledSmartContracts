@@ -20,20 +20,21 @@ interface IENCDVesting {
 
 contract ENCD_ICO is Ownable, ReentrancyGuard {
     using SafeERC20 for ERC20;
-    ERC20 public USDTtoken;
-    ERC20 public DAItoken;
-    ERC20 public BUSDtoken;
-    ERC20 public Encircledtoken;
-    IENCDVesting public ENCDtoken;
+    ERC20 public USDTtoken; //address of usdt
+    ERC20 public DAItoken; //address of dai
+    ERC20 public BUSDtoken; //address of busd
+    ERC20 public Encircledtoken; //address of the encd token
+    IENCDVesting public ENCDtoken; //address of the encdvesting smart contract
 
-    uint256 public seedtokensforsale = 16_000_000 * 10 ** 18; //Seed: 8%
-    uint256 public privatetokensforsale = 30_000_000 * 10 ** 18; //Private Sale: 15%
-    uint256 public publictokensforsale = 20_000_000 * 10 ** 18; //Public Sale: 20%
+    uint256 public seedtokensforsale = 16_000_000 * 10 ** 18; //amount availabe for purchase in seed stage: 8%
+    uint256 public privatetokensforsale = 30_000_000 * 10 ** 18; //amount availabe for purchase in private stage: 15%
+    uint256 public publictokensforsale = 20_000_000 * 10 ** 18; //amount availabe for purchase in public stage: 20%
 
-    bool public startLock = false;
+    bool public startLock = false; //locking the start function after execution
+
+    uint256 startVTime; //relaese time of the tokens to the buyers (tge), init vesting start
+
     event StageChanged(uint _e);
-
-    uint256 startVTime;
 
     enum Stages {
         none,
@@ -45,6 +46,12 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
 
     Stages public currentStage;
 
+    /**
+     * @dev initalizes the crowdsale contract
+     * @param _tokenaddress address of the encd token
+     * @param _vestingscaddress address of the vesting smart contract
+     * @param _USDTtokenaddress address of usdt
+     */
     constructor(
         address _tokenaddress,
         address _USDTtokenaddress,
@@ -56,6 +63,12 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
         USDTtoken = ERC20(_USDTtokenaddress);
     }
 
+    /**
+     * @dev initalize vesting function/
+     * @notice call before the start of the presale
+     * @param _starttime sets the relase time in seconts of the purchased tokens (tge)
+     * so e.g. 60 * 60 * 24 * 30 = 2592000 would set the tge to 30 days after calling the function
+     */
     function startVesting(uint _starttime) external onlyOwner {
         require(startLock == false, "Function already executed");
         startLock = true;
@@ -64,9 +77,10 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
     }
 
     /**
-     * Steps:
-     * 1. stablecoin approval
      * @dev function to buy token with USDT
+     * @notice first stablecoin needs to be approved (front-end)
+     * @param _amount amount of encd tokens buyer wants to purchase
+     * @param _id stablecoin used for purchase
      * id 1 = USDT
      * id 2 = DAI
      * id 3 = BUSD
@@ -90,6 +104,11 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
         //Encircledtoken.transfer(msg.sender, _amount);
     }
 
+    /**
+     * @dev function to get the price denomintor for the current stage
+     * e.g. seedstage price denominator = 500 => 1/500 = 0.02
+     * @return price price denominator of current price
+     */
     function getPrice() public view returns (uint256 price) {
         require(
             currentStage == Stages.seedstage ||
@@ -107,6 +126,8 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @notice Setting the presale stage
+     * @param _value index of stage
      * 0 - none
      * 1 - seed
      * 2 - private
@@ -120,13 +141,13 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @param amount (type uint256) amount of ether
-     * @dev function use to withdraw ether from contract
+     * @dev function use to withdraw the stablecoins from the contract
+     * @param amount amount of the stablecoin
+     * @param id stabelcoin:
      * id 1 = USDT
      * id 2 = DAI
      * id 3 = BUSD
      */
-
     function withdraw(
         uint256 amount,
         uint id
@@ -140,6 +161,11 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
         return true;
     }
 
+    /**
+     * @dev create vesting schedule after a purchase
+     * @param _buyer address of buyer
+     * @param _amount purchased amount
+     */
     function transferVesting(address _buyer, uint _amount) internal {
         if (currentStage == Stages.seedstage) {
             require(
@@ -198,6 +224,10 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
         }
     }
 
+    /**
+     * @dev creation of the team vesting schedule
+     * called after vesting start
+     */
     function startTeamVesting() internal {
         ENCDtoken.createVestingSchedule(
             0x02346e9d0173CE68237330CF8305025F2A54520C,
@@ -255,15 +285,20 @@ contract ENCD_ICO is Ownable, ReentrancyGuard {
         );
     }
 
-    function getCoin(uint id) internal view returns (ERC20 token) {
-        require(id <= 3 && 0 < id, "invalid token id");
-        if (id == 1) {
+    /**
+     * @dev get the stablecoin
+     * @param _id id of stablecoin
+     * @return _token returns stablecoin
+     */
+    function getCoin(uint _id) internal view returns (ERC20 _token) {
+        require(_id <= 3 && 0 < _id, "invalid token id");
+        if (_id == 1) {
             return USDTtoken;
         }
-        if (id == 2) {
+        if (_id == 2) {
             return DAItoken;
         }
-        if (id == 3) {
+        if (_id == 3) {
             return BUSDtoken;
         }
     }
